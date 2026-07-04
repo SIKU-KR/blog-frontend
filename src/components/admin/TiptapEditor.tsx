@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useCallback } from 'react';
+import type { ReactNode } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import { BubbleMenu } from '@tiptap/react/menus';
 import StarterKit from '@tiptap/starter-kit';
@@ -71,6 +72,38 @@ const CODE_BLOCK_LANGUAGES = [
   { value: 'css', label: 'CSS' },
   { value: 'markdown', label: 'Markdown' },
 ] as const;
+
+interface ToolbarButtonProps {
+  onClick: () => void;
+  isActive?: boolean;
+  disabled?: boolean;
+  title: string;
+  children: ReactNode;
+}
+
+function ToolbarButton({
+  onClick,
+  isActive = false,
+  disabled = false,
+  title: buttonTitle,
+  children,
+}: ToolbarButtonProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title={buttonTitle}
+      className={`p-1.5 rounded transition-colors ${
+        isActive
+          ? 'bg-gray-200 text-gray-900'
+          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+      } disabled:opacity-40 disabled:cursor-not-allowed`}
+    >
+      {children}
+    </button>
+  );
+}
 
 interface TiptapEditorProps {
   initialValues: {
@@ -630,35 +663,6 @@ export default function TiptapEditor({
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [handleManualSave, handlePublish, setShowDraftModal]);
-
-  // 툴바 버튼 컴포넌트
-  const ToolbarButton = ({
-    onClick,
-    isActive = false,
-    disabled = false,
-    title: buttonTitle,
-    children,
-  }: {
-    onClick: () => void;
-    isActive?: boolean;
-    disabled?: boolean;
-    title: string;
-    children: React.ReactNode;
-  }) => (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      title={buttonTitle}
-      className={`p-1.5 rounded transition-colors ${
-        isActive
-          ? 'bg-gray-200 text-gray-900'
-          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-      } disabled:opacity-40 disabled:cursor-not-allowed`}
-    >
-      {children}
-    </button>
-  );
 
   const iconSize = 18;
   const currentCodeBlockLanguage = editor?.isActive('codeBlock')

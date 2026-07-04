@@ -11,15 +11,15 @@ const AUTO_SAVE_INTERVAL = 30000; // 30초
  * - 불러오기/삭제 기능
  */
 export function useDraftManagement(currentDraft: DraftSnapshot) {
-  const [lastAutoSavedAt, setLastAutoSavedAt] = useState<Date | null>(null);
-
-  const latestDraftRef = useRef<DraftSnapshot>(currentDraft);
+  const [lastAutoSavedAt, setLastAutoSavedAt] = useState<Date | null>(() => {
+    const drafts = draftStorage.getDrafts();
+    const autoDraft = drafts.find(draft => draft.isAutoSave && draft.timestamp);
+    return autoDraft ? new Date(autoDraft.timestamp) : null;
+  });
   const previousDraftJSONRef = useRef<string | null>(null);
 
-  latestDraftRef.current = currentDraft;
-
   const handleAutoSave = useCallback(() => {
-    const snapshot = latestDraftRef.current;
+    const snapshot = currentDraft;
     const normalizedTitle = snapshot.title.trim();
     const hasContent =
       normalizedTitle || snapshot.content.trim() || snapshot.summary.trim() || snapshot.slug.trim();
@@ -51,7 +51,7 @@ export function useDraftManagement(currentDraft: DraftSnapshot) {
     } catch (error) {
       logger.error('자동 임시저장 오류', error);
     }
-  }, []);
+  }, [currentDraft]);
 
   // 자동 저장 로직
   useEffect(() => {
@@ -70,18 +70,9 @@ export function useDraftManagement(currentDraft: DraftSnapshot) {
     };
   }, [handleAutoSave]);
 
-  // 마지막 자동저장 시간 초기화
-  useEffect(() => {
-    const drafts = draftStorage.getDrafts();
-    const autoDraft = drafts.find(draft => draft.isAutoSave && draft.timestamp);
-    if (autoDraft) {
-      setLastAutoSavedAt(new Date(autoDraft.timestamp));
-    }
-  }, []);
-
   // 수동 저장
   const saveDraft = useCallback((): boolean => {
-    const snapshot = latestDraftRef.current;
+    const snapshot = currentDraft;
     if (!snapshot.title.trim() && !snapshot.content.trim()) return false;
 
     try {
@@ -104,7 +95,7 @@ export function useDraftManagement(currentDraft: DraftSnapshot) {
       logger.error('수동 임시저장 오류', error);
       return false;
     }
-  }, []);
+  }, [currentDraft]);
 
   return {
     lastAutoSavedAt,

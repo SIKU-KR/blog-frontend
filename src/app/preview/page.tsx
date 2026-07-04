@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 import Container from '@/components/ui/Container';
 import ClientMarkdownRenderer from '@/components/ui/data-display/ClientMarkdownRenderer';
 import Divider from '@/components/ui/Divider';
@@ -15,33 +15,61 @@ interface PreviewData {
 const PREVIEW_DATA_KEY = 'blog-preview-data';
 const PREVIEW_DATA_EXPIRY = 30 * 60 * 1000; // 30 minutes
 
-export default function PreviewPage() {
-  const [data, setData] = useState<PreviewData | null>(null);
-  const [error, setError] = useState<string | null>(null);
+function subscribePreviewData(onStoreChange: () => void) {
+  if (typeof window === 'undefined') {
+    return () => {};
+  }
 
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(PREVIEW_DATA_KEY);
-      if (!stored) {
-        setError('미리보기 데이터가 없습니다. 에디터에서 미리보기 버튼을 클릭해주세요.');
-        return;
-      }
+  queueMicrotask(onStoreChange);
+  window.addEventListener('storage', onStoreChange);
 
-      const parsed: PreviewData = JSON.parse(stored);
+  return () => {
+    window.removeEventListener('storage', onStoreChange);
+  };
+}
 
-      // Check expiration
-      if (Date.now() - parsed.timestamp > PREVIEW_DATA_EXPIRY) {
-        localStorage.removeItem(PREVIEW_DATA_KEY);
-        setError('미리보기 데이터가 만료되었습니다. 에디터에서 다시 미리보기를 열어주세요.');
-        return;
-      }
+function getPreviewSnapshot() {
+  if (typeof window === 'undefined') {
+    return '';
+  }
 
-      setData(parsed);
-    } catch (e) {
-      console.error('미리보기 데이터 로드 오류:', e);
-      setError('미리보기 데이터를 불러오는 데 실패했습니다.');
+  try {
+    return localStorage.getItem(PREVIEW_DATA_KEY) ?? '';
+  } catch (e) {
+    console.error('미리보기 데이터 로드 오류:', e);
+    return '';
+  }
+}
+
+function parsePreviewData(snapshot: string): { data: PreviewData | null; error: string | null } {
+  try {
+    if (!snapshot) {
+      return {
+        data: null,
+        error: '미리보기 데이터가 없습니다. 에디터에서 미리보기 버튼을 클릭해주세요.',
+      };
     }
-  }, []);
+
+    const parsed: PreviewData = JSON.parse(snapshot);
+
+    // Check expiration
+    if (Date.now() - parsed.timestamp > PREVIEW_DATA_EXPIRY) {
+      return {
+        data: null,
+        error: '미리보기 데이터가 만료되었습니다. 에디터에서 다시 미리보기를 열어주세요.',
+      };
+    }
+
+    return { data: parsed, error: null };
+  } catch (e) {
+    console.error('미리보기 데이터 로드 오류:', e);
+    return { data: null, error: '미리보기 데이터를 불러오는 데 실패했습니다.' };
+  }
+}
+
+export default function PreviewPage() {
+  const previewSnapshot = useSyncExternalStore(subscribePreviewData, getPreviewSnapshot, () => '');
+  const { data, error } = parsePreviewData(previewSnapshot);
 
   if (error) {
     return (
