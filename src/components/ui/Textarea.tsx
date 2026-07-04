@@ -6,7 +6,8 @@ interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement
 }
 
 export function Textarea({ className = '', label, error, id, ...props }: TextareaProps) {
-  const textareaId = id || `textarea-${Math.random().toString(36).substring(2, 9)}`;
+  const generatedId = React.useId();
+  const textareaId = id || generatedId;
 
   return (
     <div className="space-y-1">
